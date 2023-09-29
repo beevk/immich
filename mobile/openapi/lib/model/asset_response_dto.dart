@@ -22,10 +22,15 @@ class AssetResponseDto {
     required this.fileModifiedAt,
     required this.id,
     required this.isArchived,
+    required this.isExternal,
     required this.isFavorite,
+    required this.isOffline,
+    required this.isReadOnly,
+    required this.libraryId,
     this.livePhotoVideoId,
     required this.originalFileName,
     required this.originalPath,
+    this.owner,
     required this.ownerId,
     this.people = const [],
     required this.resized,
@@ -61,13 +66,29 @@ class AssetResponseDto {
 
   bool isArchived;
 
+  bool isExternal;
+
   bool isFavorite;
+
+  bool isOffline;
+
+  bool isReadOnly;
+
+  String libraryId;
 
   String? livePhotoVideoId;
 
   String originalFileName;
 
   String originalPath;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  UserResponseDto? owner;
 
   String ownerId;
 
@@ -103,10 +124,15 @@ class AssetResponseDto {
      other.fileModifiedAt == fileModifiedAt &&
      other.id == id &&
      other.isArchived == isArchived &&
+     other.isExternal == isExternal &&
      other.isFavorite == isFavorite &&
+     other.isOffline == isOffline &&
+     other.isReadOnly == isReadOnly &&
+     other.libraryId == libraryId &&
      other.livePhotoVideoId == livePhotoVideoId &&
      other.originalFileName == originalFileName &&
      other.originalPath == originalPath &&
+     other.owner == owner &&
      other.ownerId == ownerId &&
      other.people == people &&
      other.resized == resized &&
@@ -128,10 +154,15 @@ class AssetResponseDto {
     (fileModifiedAt.hashCode) +
     (id.hashCode) +
     (isArchived.hashCode) +
+    (isExternal.hashCode) +
     (isFavorite.hashCode) +
+    (isOffline.hashCode) +
+    (isReadOnly.hashCode) +
+    (libraryId.hashCode) +
     (livePhotoVideoId == null ? 0 : livePhotoVideoId!.hashCode) +
     (originalFileName.hashCode) +
     (originalPath.hashCode) +
+    (owner == null ? 0 : owner!.hashCode) +
     (ownerId.hashCode) +
     (people.hashCode) +
     (resized.hashCode) +
@@ -142,7 +173,7 @@ class AssetResponseDto {
     (updatedAt.hashCode);
 
   @override
-  String toString() => 'AssetResponseDto[checksum=$checksum, deviceAssetId=$deviceAssetId, deviceId=$deviceId, duration=$duration, exifInfo=$exifInfo, fileCreatedAt=$fileCreatedAt, fileModifiedAt=$fileModifiedAt, id=$id, isArchived=$isArchived, isFavorite=$isFavorite, livePhotoVideoId=$livePhotoVideoId, originalFileName=$originalFileName, originalPath=$originalPath, ownerId=$ownerId, people=$people, resized=$resized, smartInfo=$smartInfo, tags=$tags, thumbhash=$thumbhash, type=$type, updatedAt=$updatedAt]';
+  String toString() => 'AssetResponseDto[checksum=$checksum, deviceAssetId=$deviceAssetId, deviceId=$deviceId, duration=$duration, exifInfo=$exifInfo, fileCreatedAt=$fileCreatedAt, fileModifiedAt=$fileModifiedAt, id=$id, isArchived=$isArchived, isExternal=$isExternal, isFavorite=$isFavorite, isOffline=$isOffline, isReadOnly=$isReadOnly, libraryId=$libraryId, livePhotoVideoId=$livePhotoVideoId, originalFileName=$originalFileName, originalPath=$originalPath, owner=$owner, ownerId=$ownerId, people=$people, resized=$resized, smartInfo=$smartInfo, tags=$tags, thumbhash=$thumbhash, type=$type, updatedAt=$updatedAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -159,7 +190,11 @@ class AssetResponseDto {
       json[r'fileModifiedAt'] = this.fileModifiedAt.toUtc().toIso8601String();
       json[r'id'] = this.id;
       json[r'isArchived'] = this.isArchived;
+      json[r'isExternal'] = this.isExternal;
       json[r'isFavorite'] = this.isFavorite;
+      json[r'isOffline'] = this.isOffline;
+      json[r'isReadOnly'] = this.isReadOnly;
+      json[r'libraryId'] = this.libraryId;
     if (this.livePhotoVideoId != null) {
       json[r'livePhotoVideoId'] = this.livePhotoVideoId;
     } else {
@@ -167,6 +202,11 @@ class AssetResponseDto {
     }
       json[r'originalFileName'] = this.originalFileName;
       json[r'originalPath'] = this.originalPath;
+    if (this.owner != null) {
+      json[r'owner'] = this.owner;
+    } else {
+    //  json[r'owner'] = null;
+    }
       json[r'ownerId'] = this.ownerId;
       json[r'people'] = this.people;
       json[r'resized'] = this.resized;
@@ -203,10 +243,15 @@ class AssetResponseDto {
         fileModifiedAt: mapDateTime(json, r'fileModifiedAt', '')!,
         id: mapValueOfType<String>(json, r'id')!,
         isArchived: mapValueOfType<bool>(json, r'isArchived')!,
+        isExternal: mapValueOfType<bool>(json, r'isExternal')!,
         isFavorite: mapValueOfType<bool>(json, r'isFavorite')!,
+        isOffline: mapValueOfType<bool>(json, r'isOffline')!,
+        isReadOnly: mapValueOfType<bool>(json, r'isReadOnly')!,
+        libraryId: mapValueOfType<String>(json, r'libraryId')!,
         livePhotoVideoId: mapValueOfType<String>(json, r'livePhotoVideoId'),
         originalFileName: mapValueOfType<String>(json, r'originalFileName')!,
         originalPath: mapValueOfType<String>(json, r'originalPath')!,
+        owner: UserResponseDto.fromJson(json[r'owner']),
         ownerId: mapValueOfType<String>(json, r'ownerId')!,
         people: PersonResponseDto.listFromJson(json[r'people']),
         resized: mapValueOfType<bool>(json, r'resized')!,
@@ -270,7 +315,11 @@ class AssetResponseDto {
     'fileModifiedAt',
     'id',
     'isArchived',
+    'isExternal',
     'isFavorite',
+    'isOffline',
+    'isReadOnly',
+    'libraryId',
     'originalFileName',
     'originalPath',
     'ownerId',

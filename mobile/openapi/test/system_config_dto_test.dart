@@ -31,6 +31,11 @@ void main() {
       // TODO
     });
 
+    // SystemConfigMapDto map
+    test('to test the property `map`', () async {
+      // TODO
+    });
+
     // SystemConfigOAuthDto oauth
     test('to test the property `oauth`', () async {
       // TODO
@@ -38,6 +43,11 @@ void main() {
 
     // SystemConfigPasswordLoginDto passwordLogin
     test('to test the property `passwordLogin`', () async {
+      // TODO
+    });
+
+    // SystemConfigReverseGeocodingDto reverseGeocoding
+    test('to test the property `reverseGeocoding`', () async {
       // TODO
     });
 

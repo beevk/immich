@@ -1,5 +1,8 @@
 import {
   AudioCodec,
+  CQMode,
+  CitiesFile,
+  Colorspace,
   SystemConfig,
   SystemConfigEntity,
   SystemConfigKey,
@@ -30,6 +33,12 @@ export const defaults = Object.freeze<SystemConfig>({
     targetAudioCodec: AudioCodec.AAC,
     targetResolution: '720',
     maxBitrate: '0',
+    bframes: -1,
+    refs: 0,
+    gopSize: 0,
+    npl: 0,
+    temporalAQ: false,
+    cqMode: CQMode.AUTO,
     twoPass: false,
     transcode: TranscodePolicy.REQUIRED,
     tonemap: ToneMapping.HABLE,
@@ -43,16 +52,39 @@ export const defaults = Object.freeze<SystemConfig>({
     [QueueName.RECOGNIZE_FACES]: { concurrency: 2 },
     [QueueName.SEARCH]: { concurrency: 5 },
     [QueueName.SIDECAR]: { concurrency: 5 },
+    [QueueName.LIBRARY]: { concurrency: 1 },
     [QueueName.STORAGE_TEMPLATE_MIGRATION]: { concurrency: 5 },
+    [QueueName.MIGRATION]: { concurrency: 5 },
     [QueueName.THUMBNAIL_GENERATION]: { concurrency: 5 },
     [QueueName.VIDEO_CONVERSION]: { concurrency: 1 },
   },
   machineLearning: {
     enabled: process.env.IMMICH_MACHINE_LEARNING_ENABLED !== 'false',
     url: process.env.IMMICH_MACHINE_LEARNING_URL || 'http://immich-machine-learning:3003',
-    facialRecognitionEnabled: true,
-    tagImageEnabled: true,
-    clipEncodeEnabled: true,
+    classification: {
+      enabled: true,
+      modelName: 'microsoft/resnet-50',
+      minScore: 0.9,
+    },
+    clip: {
+      enabled: true,
+      modelName: 'ViT-B-32::openai',
+    },
+    facialRecognition: {
+      enabled: true,
+      modelName: 'buffalo_l',
+      minScore: 0.7,
+      maxDistance: 0.6,
+      minFaces: 1,
+    },
+  },
+  map: {
+    enabled: true,
+    tileUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  },
+  reverseGeocoding: {
+    enabled: true,
+    citiesFileOverride: CitiesFile.CITIES_500,
   },
   oauth: {
     enabled: false,
@@ -78,6 +110,8 @@ export const defaults = Object.freeze<SystemConfig>({
   thumbnail: {
     webpSize: 250,
     jpegSize: 1440,
+    quality: 80,
+    colorspace: Colorspace.P3,
   },
 });
 
@@ -85,6 +119,8 @@ export enum FeatureFlag {
   CLIP_ENCODE = 'clipEncode',
   FACIAL_RECOGNITION = 'facialRecognition',
   TAG_IMAGE = 'tagImage',
+  MAP = 'map',
+  REVERSE_GEOCODING = 'reverseGeocoding',
   SIDECAR = 'sidecar',
   SEARCH = 'search',
   OAUTH = 'oauth',
@@ -143,9 +179,11 @@ export class SystemConfigCore {
     const mlEnabled = config.machineLearning.enabled;
 
     return {
-      [FeatureFlag.CLIP_ENCODE]: mlEnabled && config.machineLearning.clipEncodeEnabled,
-      [FeatureFlag.FACIAL_RECOGNITION]: mlEnabled && config.machineLearning.facialRecognitionEnabled,
-      [FeatureFlag.TAG_IMAGE]: mlEnabled && config.machineLearning.tagImageEnabled,
+      [FeatureFlag.CLIP_ENCODE]: mlEnabled && config.machineLearning.clip.enabled,
+      [FeatureFlag.FACIAL_RECOGNITION]: mlEnabled && config.machineLearning.facialRecognition.enabled,
+      [FeatureFlag.TAG_IMAGE]: mlEnabled && config.machineLearning.classification.enabled,
+      [FeatureFlag.MAP]: config.map.enabled,
+      [FeatureFlag.REVERSE_GEOCODING]: config.reverseGeocoding.enabled,
       [FeatureFlag.SIDECAR]: true,
       [FeatureFlag.SEARCH]: process.env.TYPESENSE_ENABLED !== 'false',
 
@@ -230,7 +268,7 @@ export class SystemConfigCore {
       _.set(config, key, value);
     }
 
-    return _.defaultsDeep(config, defaults) as SystemConfig;
+    return plainToClass(SystemConfigDto, _.defaultsDeep(config, defaults));
   }
 
   private async loadFromFile(filepath: string, force = false) {

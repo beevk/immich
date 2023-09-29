@@ -31,6 +31,11 @@ void main() {
       // TODO
     });
 
+    // bool map
+    test('to test the property `map`', () async {
+      // TODO
+    });
+
     // bool oauth
     test('to test the property `oauth`', () async {
       // TODO
@@ -43,6 +48,11 @@ void main() {
 
     // bool passwordLogin
     test('to test the property `passwordLogin`', () async {
+      // TODO
+    });
+
+    // bool reverseGeocoding
+    test('to test the property `reverseGeocoding`', () async {
       // TODO
     });
 

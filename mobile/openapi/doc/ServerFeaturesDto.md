@@ -11,9 +11,11 @@ Name | Type | Description | Notes
 **clipEncode** | **bool** |  | 
 **configFile** | **bool** |  | 
 **facialRecognition** | **bool** |  | 
+**map** | **bool** |  | 
 **oauth** | **bool** |  | 
 **oauthAutoLaunch** | **bool** |  | 
 **passwordLogin** | **bool** |  | 
+**reverseGeocoding** | **bool** |  | 
 **search** | **bool** |  | 
 **sidecar** | **bool** |  | 
 **tagImage** | **bool** |  | 

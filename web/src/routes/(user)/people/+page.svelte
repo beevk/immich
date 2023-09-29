@@ -21,6 +21,7 @@
   import { browser } from '$app/environment';
   import MergeSuggestionModal from '$lib/components/faces-page/merge-suggestion-modal.svelte';
   import SetBirthDateModal from '$lib/components/faces-page/set-birth-date-modal.svelte';
+  import { shouldIgnoreShortcut } from '$lib/utils/shortcut';
 
   export let data: PageData;
   let selectHidden = false;
@@ -41,6 +42,7 @@
   let personName = '';
   let personMerge1: PersonResponseDto;
   let personMerge2: PersonResponseDto;
+  let potentialMergePeople: PersonResponseDto[] = [];
   let edittingPerson: PersonResponseDto | null = null;
 
   people.forEach((person: PersonResponseDto) => {
@@ -60,6 +62,9 @@
   });
 
   const handleKeyboardPress = (event: KeyboardEvent) => {
+    if (shouldIgnoreShortcut(event)) {
+      return;
+    }
     switch (event.key) {
       case 'Escape':
         handleCloseClick();
@@ -244,6 +249,7 @@
   };
 
   const submitNameChange = async () => {
+    potentialMergePeople = [];
     showChangeNameModal = false;
     if (!edittingPerson || personName === edittingPerson.name) {
       return;
@@ -260,6 +266,15 @@
     if (existingPerson) {
       personMerge2 = existingPerson;
       showMergeModal = true;
+      potentialMergePeople = people
+        .filter(
+          (person: PersonResponseDto) =>
+            personMerge2.name.toLowerCase() === person.name.toLowerCase() &&
+            person.id !== personMerge2.id &&
+            person.id !== personMerge1.id &&
+            !person.isHidden,
+        )
+        .slice(0, 3);
       return;
     }
     changeName();
@@ -328,7 +343,7 @@
     <MergeSuggestionModal
       {personMerge1}
       {personMerge2}
-      {people}
+      {potentialMergePeople}
       on:close={() => (showMergeModal = false)}
       on:reject={() => changeName()}
       on:confirm={(event) => handleMergeSameFace(event.detail)}

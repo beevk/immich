@@ -4,7 +4,7 @@
     NotificationType,
   } from '$lib/components/shared-components/notification/notification';
   import { AppRoute } from '$lib/constants';
-  import { featureFlags } from '$lib/stores/feature-flags.store';
+  import { featureFlags } from '$lib/stores/server-config.store';
   import { handleError } from '$lib/utils/handle-error';
   import { AllJobStatusResponseDto, api, JobCommand, JobCommandDto, JobName } from '@api';
   import type { ComponentType } from 'svelte';
@@ -12,6 +12,7 @@
   import FaceRecognition from 'svelte-material-icons/FaceRecognition.svelte';
   import FileJpgBox from 'svelte-material-icons/FileJpgBox.svelte';
   import FileXmlBox from 'svelte-material-icons/FileXmlBox.svelte';
+  import LibraryShelves from 'svelte-material-icons/LibraryShelves.svelte';
   import FolderMove from 'svelte-material-icons/FolderMove.svelte';
   import CogIcon from 'svelte-material-icons/Cog.svelte';
   import Table from 'svelte-material-icons/Table.svelte';
@@ -64,6 +65,13 @@
       title: api.getJobName(JobName.MetadataExtraction),
       subtitle: 'Extract metadata information i.e. GPS, resolution...etc',
     },
+    [JobName.Library]: {
+      icon: LibraryShelves,
+      title: api.getJobName(JobName.Library),
+      subtitle: 'Perform library tasks',
+      allText: 'ALL',
+      missingText: 'REFRESH',
+    },
     [JobName.Sidecar]: {
       title: api.getJobName(JobName.Sidecar),
       icon: FileXmlBox,
@@ -101,6 +109,12 @@
       title: api.getJobName(JobName.StorageTemplateMigration),
       allowForceCommand: false,
       component: StorageMigrationDescription,
+    },
+    [JobName.Migration]: {
+      icon: FolderMove,
+      title: api.getJobName(JobName.Migration),
+      subtitle: 'Migrate thumbnails for assets and faces to the latest folder structure',
+      allowForceCommand: false,
     },
   };
   $: jobList = Object.entries(jobDetails) as [JobName, JobDetails][];

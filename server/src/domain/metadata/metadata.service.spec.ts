@@ -1,22 +1,43 @@
-import { assetStub, newAssetRepositoryMock, newJobRepositoryMock, newStorageRepositoryMock } from '@test';
+import {
+  assetStub,
+  newAlbumRepositoryMock,
+  newAssetRepositoryMock,
+  newCryptoRepositoryMock,
+  newJobRepositoryMock,
+  newMetadataRepositoryMock,
+  newStorageRepositoryMock,
+  newSystemConfigRepositoryMock,
+} from '@test';
 import { constants } from 'fs/promises';
-import { IAssetRepository, WithoutProperty, WithProperty } from '../asset';
+import { IAlbumRepository } from '../album';
+import { IAssetRepository, WithProperty, WithoutProperty } from '../asset';
+import { ICryptoRepository } from '../crypto';
 import { IJobRepository, JobName } from '../job';
 import { IStorageRepository } from '../storage';
+import { ISystemConfigRepository } from '../system-config';
+import { IMetadataRepository } from './metadata.repository';
 import { MetadataService } from './metadata.service';
 
 describe(MetadataService.name, () => {
-  let sut: MetadataService;
+  let albumMock: jest.Mocked<IAlbumRepository>;
   let assetMock: jest.Mocked<IAssetRepository>;
+  let configMock: jest.Mocked<ISystemConfigRepository>;
+  let cryptoRepository: jest.Mocked<ICryptoRepository>;
   let jobMock: jest.Mocked<IJobRepository>;
+  let metadataMock: jest.Mocked<IMetadataRepository>;
   let storageMock: jest.Mocked<IStorageRepository>;
+  let sut: MetadataService;
 
   beforeEach(async () => {
+    albumMock = newAlbumRepositoryMock();
     assetMock = newAssetRepositoryMock();
+    configMock = newSystemConfigRepositoryMock();
+    cryptoRepository = newCryptoRepositoryMock();
     jobMock = newJobRepositoryMock();
+    metadataMock = newMetadataRepositoryMock();
     storageMock = newStorageRepositoryMock();
 
-    sut = new MetadataService(assetMock, jobMock, storageMock);
+    sut = new MetadataService(albumMock, assetMock, cryptoRepository, jobMock, metadataMock, storageMock, configMock);
   });
 
   it('should be defined', () => {
@@ -99,6 +120,16 @@ describe(MetadataService.name, () => {
         id: assetStub.image.id,
         sidecarPath: '/original/path.ext.xmp',
       });
+    });
+  });
+
+  describe('handleMetadataExtraction', () => {
+    it('should handle lists of numbers', async () => {
+      assetMock.getByIds.mockResolvedValue([assetStub.image1]);
+      storageMock.stat.mockResolvedValue({ size: 123456 } as any);
+      metadataMock.getExifTags.mockResolvedValue({ ISO: [160] as any });
+      await sut.handleMetadataExtraction({ id: assetStub.image1.id });
+      expect(assetMock.upsertExif).toHaveBeenCalledWith(expect.objectContaining({ iso: 160 }));
     });
   });
 });

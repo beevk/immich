@@ -27,6 +27,7 @@
   import CircleIconButton from '../elements/buttons/circle-icon-button.svelte';
   import Close from 'svelte-material-icons/Close.svelte';
   import ProgressBar, { ProgressBarStatus } from '../shared-components/progress-bar/progress-bar.svelte';
+  import { shouldIgnoreShortcut } from '$lib/utils/shortcut';
 
   export let assetStore: AssetStore | null = null;
   export let asset: AssetResponseDto;
@@ -49,16 +50,16 @@
   let addToSharedAlbum = true;
   let shouldPlayMotionPhoto = false;
   let isShowProfileImageCrop = false;
-  let shouldShowDownloadButton = sharedLink ? sharedLink.allowDownload : true;
+  let shouldShowDownloadButton = sharedLink ? sharedLink.allowDownload : !asset.isOffline;
   let canCopyImagesToClipboard: boolean;
 
-  const onKeyboardPress = (keyInfo: KeyboardEvent) => handleKeyboardPress(keyInfo.key, keyInfo.shiftKey);
+  const onKeyboardPress = (keyInfo: KeyboardEvent) => handleKeyboardPress(keyInfo);
 
   onMount(async () => {
     document.addEventListener('keydown', onKeyboardPress);
 
     if (!sharedLink) {
-      getAllAlbums();
+      await getAllAlbums();
     }
 
     // Import hack :( see https://github.com/vadimkorr/svelte-carousel/issues/27#issuecomment-851022295
@@ -88,7 +89,14 @@
     }
   };
 
-  const handleKeyboardPress = (key: string, shiftKey: boolean) => {
+  const handleKeyboardPress = (event: KeyboardEvent) => {
+    if (shouldIgnoreShortcut(event)) {
+      return;
+    }
+
+    const key = event.key;
+    const shiftKey = event.shiftKey;
+
     switch (key) {
       case 'a':
       case 'A':
@@ -112,6 +120,10 @@
         isShowDeleteConfirmation = true;
         return;
       case 'Escape':
+        if (isShowDeleteConfirmation) {
+          isShowDeleteConfirmation = false;
+          return;
+        }
         closeViewer();
         return;
       case 'f':
@@ -136,7 +148,7 @@
       if (hasNext) {
         progressBar.restart(true);
       } else {
-        handleStopSlideshow();
+        await handleStopSlideshow();
       }
     }
 
@@ -165,7 +177,7 @@
         },
       });
 
-      navigateAssetForward();
+      await navigateAssetForward();
 
       for (const asset of deletedAssets) {
         if (asset.status == 'SUCCESS') {
@@ -201,7 +213,7 @@
         message: asset.isFavorite ? `Added to favorites` : `Removed from favorites`,
       });
     } catch (error) {
-      handleError(error, `Unable to ${asset.isFavorite ? `add asset to` : `remove asset from`} favorites`);
+      await handleError(error, `Unable to ${asset.isFavorite ? `add asset to` : `remove asset from`} favorites`);
     }
   };
 
@@ -258,7 +270,7 @@
         message: asset.isArchived ? `Added to archive` : `Removed from archive`,
       });
     } catch (error) {
-      handleError(error, `Unable to ${asset.isArchived ? `add asset to` : `remove asset from`} archive`);
+      await handleError(error, `Unable to ${asset.isArchived ? `add asset to` : `remove asset from`} archive`);
     }
   };
 
@@ -278,7 +290,7 @@
       await api.assetApi.runAssetJobs({ assetJobsDto: { assetIds: [asset.id], name } });
       notificationController.show({ type: NotificationType.Info, message: api.getAssetJobMessage(name) });
     } catch (error) {
-      handleError(error, `Unable to submit job`);
+      await handleError(error, `Unable to submit job`);
     }
   };
 

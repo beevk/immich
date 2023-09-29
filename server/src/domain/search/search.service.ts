@@ -6,8 +6,8 @@ import { AssetResponseDto, mapAsset } from '../asset';
 import { IAssetRepository } from '../asset/asset.repository';
 import { AuthUserDto } from '../auth';
 import { usePagination } from '../domain.util';
-import { AssetFaceId, IFaceRepository } from '../facial-recognition';
-import { IAssetFaceJob, IBulkEntityJob, IJobRepository, JobName, JOBS_ASSET_PAGINATION_SIZE } from '../job';
+import { IAssetFaceJob, IBulkEntityJob, IJobRepository, JOBS_ASSET_PAGINATION_SIZE, JobName } from '../job';
+import { AssetFaceId, IPersonRepository } from '../person';
 import { IMachineLearningRepository } from '../smart-info';
 import { FeatureFlag, ISystemConfigRepository, SystemConfigCore } from '../system-config';
 import { SearchDto } from './dto';
@@ -30,7 +30,7 @@ interface SyncQueue {
 export class SearchService {
   private logger = new Logger(SearchService.name);
   private enabled = false;
-  private timer: NodeJS.Timer | null = null;
+  private timer: NodeJS.Timeout | null = null;
   private configCore: SystemConfigCore;
 
   private albumQueue: SyncQueue = {
@@ -51,11 +51,11 @@ export class SearchService {
   constructor(
     @Inject(IAlbumRepository) private albumRepository: IAlbumRepository,
     @Inject(IAssetRepository) private assetRepository: IAssetRepository,
-    @Inject(ISystemConfigRepository) configRepository: ISystemConfigRepository,
-    @Inject(IFaceRepository) private faceRepository: IFaceRepository,
     @Inject(IJobRepository) private jobRepository: IJobRepository,
     @Inject(IMachineLearningRepository) private machineLearning: IMachineLearningRepository,
+    @Inject(IPersonRepository) private personRepository: IPersonRepository,
     @Inject(ISearchRepository) private searchRepository: ISearchRepository,
+    @Inject(ISystemConfigRepository) configRepository: ISystemConfigRepository,
   ) {
     this.configCore = new SystemConfigCore(configRepository);
   }
@@ -121,15 +121,18 @@ export class SearchService {
     await this.configCore.requireFeature(FeatureFlag.SEARCH);
 
     const query = dto.q || dto.query || '*';
-    const hasClip = machineLearning.enabled && machineLearning.clipEncodeEnabled;
+    const hasClip = machineLearning.enabled && machineLearning.clip.enabled;
     const strategy = dto.clip && hasClip ? SearchStrategy.CLIP : SearchStrategy.TEXT;
     const filters = { userId: authUser.id, ...dto };
 
     let assets: SearchResult<AssetEntity>;
     switch (strategy) {
       case SearchStrategy.CLIP:
-        const clip = await this.machineLearning.encodeText(machineLearning.url, query);
-        assets = await this.searchRepository.vectorSearch(clip, filters);
+        const {
+          machineLearning: { clip },
+        } = await this.configCore.getConfig();
+        const embedding = await this.machineLearning.encodeText(machineLearning.url, { text: query }, clip);
+        assets = await this.searchRepository.vectorSearch(embedding, filters);
         break;
       case SearchStrategy.TEXT:
       default:
@@ -195,7 +198,7 @@ export class SearchService {
     await this.searchRepository.deleteAllFaces();
 
     // TODO: do this in batches based on searchIndexVersion
-    const faces = this.patchFaces(await this.faceRepository.getAll());
+    const faces = this.patchFaces(await this.personRepository.getAllFaces());
     this.logger.log(`Indexing ${faces.length} faces`);
 
     const chunkSize = 1000;
@@ -337,7 +340,7 @@ export class SearchService {
   }
 
   private async idsToFaces(ids: AssetFaceId[]): Promise<OwnedFaceEntity[]> {
-    return this.patchFaces(await this.faceRepository.getByIds(ids));
+    return this.patchFaces(await this.personRepository.getFacesByIds(ids));
   }
 
   private patchAssets(assets: AssetEntity[]): AssetEntity[] {

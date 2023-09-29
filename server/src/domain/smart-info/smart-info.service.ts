@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { IAssetRepository, WithoutProperty } from '../asset';
 import { usePagination } from '../domain.util';
-import { IBaseJob, IEntityJob, IJobRepository, JobName, JOBS_ASSET_PAGINATION_SIZE } from '../job';
+import { IBaseJob, IEntityJob, IJobRepository, JOBS_ASSET_PAGINATION_SIZE, JobName } from '../job';
 import { ISystemConfigRepository, SystemConfigCore } from '../system-config';
 import { IMachineLearningRepository } from './machine-learning.interface';
 import { ISmartInfoRepository } from './smart-info.repository';
@@ -22,7 +22,7 @@ export class SmartInfoService {
 
   async handleQueueObjectTagging({ force }: IBaseJob) {
     const { machineLearning } = await this.configCore.getConfig();
-    if (!machineLearning.enabled || !machineLearning.tagImageEnabled) {
+    if (!machineLearning.enabled || !machineLearning.classification.enabled) {
       return true;
     }
 
@@ -43,7 +43,7 @@ export class SmartInfoService {
 
   async handleClassifyImage({ id }: IEntityJob) {
     const { machineLearning } = await this.configCore.getConfig();
-    if (!machineLearning.enabled || !machineLearning.tagImageEnabled) {
+    if (!machineLearning.enabled || !machineLearning.classification.enabled) {
       return true;
     }
 
@@ -52,7 +52,11 @@ export class SmartInfoService {
       return false;
     }
 
-    const tags = await this.machineLearning.classifyImage(machineLearning.url, { imagePath: asset.resizePath });
+    const tags = await this.machineLearning.classifyImage(
+      machineLearning.url,
+      { imagePath: asset.resizePath },
+      machineLearning.classification,
+    );
     await this.repository.upsert({ assetId: asset.id, tags });
 
     return true;
@@ -60,7 +64,7 @@ export class SmartInfoService {
 
   async handleQueueEncodeClip({ force }: IBaseJob) {
     const { machineLearning } = await this.configCore.getConfig();
-    if (!machineLearning.enabled || !machineLearning.clipEncodeEnabled) {
+    if (!machineLearning.enabled || !machineLearning.clip.enabled) {
       return true;
     }
 
@@ -81,7 +85,7 @@ export class SmartInfoService {
 
   async handleEncodeClip({ id }: IEntityJob) {
     const { machineLearning } = await this.configCore.getConfig();
-    if (!machineLearning.enabled || !machineLearning.clipEncodeEnabled) {
+    if (!machineLearning.enabled || !machineLearning.clip.enabled) {
       return true;
     }
 
@@ -90,7 +94,12 @@ export class SmartInfoService {
       return false;
     }
 
-    const clipEmbedding = await this.machineLearning.encodeImage(machineLearning.url, { imagePath: asset.resizePath });
+    const clipEmbedding = await this.machineLearning.encodeImage(
+      machineLearning.url,
+      { imagePath: asset.resizePath },
+      machineLearning.clip,
+    );
+
     await this.repository.upsert({ assetId: asset.id, clipEmbedding: clipEmbedding });
 
     return true;

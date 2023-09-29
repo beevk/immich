@@ -296,6 +296,12 @@ class _$AppRouter extends RootStackRouter {
         ),
       );
     },
+    MapRoute.name: (routeData) {
+      return MaterialPageX<dynamic>(
+        routeData: routeData,
+        child: const MapPage(),
+      );
+    },
     AlbumOptionsRoute.name: (routeData) {
       final args = routeData.argsAs<AlbumOptionsRouteArgs>();
       return MaterialPageX<dynamic>(
@@ -544,10 +550,7 @@ class _$AppRouter extends RootStackRouter {
         RouteConfig(
           SettingsRoute.name,
           path: '/settings-page',
-          guards: [
-            authGuard,
-            duplicateGuard,
-          ],
+          guards: [duplicateGuard],
         ),
         RouteConfig(
           AppLogRoute.name,
@@ -600,6 +603,14 @@ class _$AppRouter extends RootStackRouter {
         RouteConfig(
           MemoryRoute.name,
           path: '/memory-page',
+          guards: [
+            authGuard,
+            duplicateGuard,
+          ],
+        ),
+        RouteConfig(
+          MapRoute.name,
+          path: '/map-page',
           guards: [
             authGuard,
             duplicateGuard,
@@ -1335,6 +1346,18 @@ class MemoryRouteArgs {
   String toString() {
     return 'MemoryRouteArgs{memories: $memories, memoryIndex: $memoryIndex, key: $key}';
   }
+}
+
+/// generated route for
+/// [MapPage]
+class MapRoute extends PageRouteInfo<void> {
+  const MapRoute()
+      : super(
+          MapRoute.name,
+          path: '/map-page',
+        );
+
+  static const String name = 'MapRoute';
 }
 
 /// generated route for

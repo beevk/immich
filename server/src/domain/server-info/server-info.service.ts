@@ -5,6 +5,7 @@ import { IStorageRepository, StorageCore, StorageFolder } from '../storage';
 import { ISystemConfigRepository, SystemConfigCore } from '../system-config';
 import { IUserRepository, UserStatsQueryResponse } from '../user';
 import {
+  ServerConfigDto,
   ServerFeaturesDto,
   ServerInfoResponseDto,
   ServerMediaTypesResponseDto,
@@ -15,8 +16,8 @@ import {
 
 @Injectable()
 export class ServerInfoService {
-  private storageCore = new StorageCore();
   private configCore: SystemConfigCore;
+  private storageCore: StorageCore;
 
   constructor(
     @Inject(ISystemConfigRepository) configRepository: ISystemConfigRepository,
@@ -24,6 +25,7 @@ export class ServerInfoService {
     @Inject(IStorageRepository) private storageRepository: IStorageRepository,
   ) {
     this.configCore = new SystemConfigCore(configRepository);
+    this.storageCore = new StorageCore(storageRepository);
   }
 
   async getInfo(): Promise<ServerInfoResponseDto> {
@@ -53,6 +55,19 @@ export class ServerInfoService {
 
   getFeatures(): Promise<ServerFeaturesDto> {
     return this.configCore.getFeatures();
+  }
+
+  async getConfig(): Promise<ServerConfigDto> {
+    const config = await this.configCore.getConfig();
+
+    // TODO move to system config
+    const loginPageMessage = process.env.PUBLIC_LOGIN_PAGE_MESSAGE || '';
+
+    return {
+      loginPageMessage,
+      mapTileUrl: config.map.tileUrl,
+      oauthButtonText: config.oauth.buttonText,
+    };
   }
 
   async getStats(): Promise<ServerStatsResponseDto> {

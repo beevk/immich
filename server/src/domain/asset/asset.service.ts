@@ -9,7 +9,7 @@ import { ICryptoRepository } from '../crypto';
 import { mimeTypes } from '../domain.constant';
 import { HumanReadableSize, usePagination } from '../domain.util';
 import { IJobRepository, JobName } from '../job';
-import { ImmichReadStream, IStorageRepository, StorageCore, StorageFolder } from '../storage';
+import { IStorageRepository, ImmichReadStream, StorageCore, StorageFolder } from '../storage';
 import { IAssetRepository } from './asset.repository';
 import {
   AssetBulkUpdateDto,
@@ -21,17 +21,18 @@ import {
   DownloadInfoDto,
   DownloadResponseDto,
   MapMarkerDto,
-  mapStats,
   MemoryLaneDto,
   TimeBucketAssetDto,
   TimeBucketDto,
+  UpdateAssetDto,
+  mapStats,
 } from './dto';
 import {
   AssetResponseDto,
-  mapAsset,
   MapMarkerResponseDto,
   MemoryLaneResponseDto,
   TimeBucketResponseDto,
+  mapAsset,
 } from './response-dto';
 
 export enum UploadFieldName {
@@ -56,7 +57,7 @@ export interface UploadFile {
 export class AssetService {
   private logger = new Logger(AssetService.name);
   private access: AccessCore;
-  private storageCore = new StorageCore();
+  private storageCore: StorageCore;
 
   constructor(
     @Inject(IAccessRepository) accessRepository: IAccessRepository,
@@ -66,6 +67,7 @@ export class AssetService {
     @Inject(IStorageRepository) private storageRepository: IStorageRepository,
   ) {
     this.access = new AccessCore(accessRepository);
+    this.storageCore = new StorageCore(storageRepository);
   }
 
   canUploadFile({ authUser, fieldName, file }: UploadRequest): true {
@@ -161,7 +163,7 @@ export class AssetService {
       if (dto.isArchived !== false) {
         await this.access.requirePermission(authUser, Permission.ARCHIVE_READ, [dto.userId]);
       }
-      await this.access.requirePermission(authUser, Permission.LIBRARY_READ, [dto.userId]);
+      await this.access.requirePermission(authUser, Permission.TIMELINE_READ, [dto.userId]);
     } else {
       dto.userId = authUser.id;
     }
@@ -184,6 +186,10 @@ export class AssetService {
     const [asset] = await this.assetRepository.getByIds([id]);
     if (!asset) {
       throw new BadRequestException('Asset not found');
+    }
+
+    if (asset.isOffline) {
+      throw new BadRequestException('Asset is offline');
     }
 
     return this.storageRepository.createReadStream(asset.originalPath, mimeTypes.lookup(asset.originalPath));
@@ -267,7 +273,7 @@ export class AssetService {
 
     if (dto.userId) {
       const userId = dto.userId;
-      await this.access.requirePermission(authUser, Permission.LIBRARY_DOWNLOAD, userId);
+      await this.access.requirePermission(authUser, Permission.TIMELINE_DOWNLOAD, userId);
       return usePagination(PAGINATION_SIZE, (pagination) => this.assetRepository.getByUserId(pagination, userId));
     }
 
@@ -279,9 +285,28 @@ export class AssetService {
     return mapStats(stats);
   }
 
+  async getRandom(authUser: AuthUserDto, count: number): Promise<AssetResponseDto[]> {
+    const assets = await this.assetRepository.getRandom(authUser.id, count);
+    return assets.map((a) => mapAsset(a));
+  }
+
+  async update(authUser: AuthUserDto, id: string, dto: UpdateAssetDto): Promise<AssetResponseDto> {
+    await this.access.requirePermission(authUser, Permission.ASSET_UPDATE, id);
+
+    const { description, ...rest } = dto;
+    if (description !== undefined) {
+      await this.assetRepository.upsertExif({ assetId: id, description });
+    }
+
+    const asset = await this.assetRepository.save({ id, ...rest });
+    await this.jobRepository.queue({ name: JobName.SEARCH_INDEX_ASSET, data: { ids: [id] } });
+    return mapAsset(asset);
+  }
+
   async updateAll(authUser: AuthUserDto, dto: AssetBulkUpdateDto) {
     const { ids, ...options } = dto;
     await this.access.requirePermission(authUser, Permission.ASSET_UPDATE, ids);
+    await this.jobRepository.queue({ name: JobName.SEARCH_INDEX_ASSET, data: { ids } });
     await this.assetRepository.updateAll(ids, options);
   }
 

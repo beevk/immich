@@ -1,5 +1,8 @@
 import {
   AudioCodec,
+  CQMode,
+  CitiesFile,
+  Colorspace,
   SystemConfig,
   SystemConfigEntity,
   SystemConfigKey,
@@ -11,7 +14,7 @@ import {
 import { BadRequestException } from '@nestjs/common';
 import { newJobRepositoryMock, newSystemConfigRepositoryMock } from '@test';
 import { IJobRepository, JobName, QueueName } from '../job';
-import { defaults, SystemConfigValidator } from './system-config.core';
+import { SystemConfigValidator, defaults } from './system-config.core';
 import { ISystemConfigRepository } from './system-config.repository';
 import { SystemConfigService } from './system-config.service';
 
@@ -29,7 +32,9 @@ const updatedConfig = Object.freeze<SystemConfig>({
     [QueueName.RECOGNIZE_FACES]: { concurrency: 2 },
     [QueueName.SEARCH]: { concurrency: 5 },
     [QueueName.SIDECAR]: { concurrency: 5 },
+    [QueueName.LIBRARY]: { concurrency: 1 },
     [QueueName.STORAGE_TEMPLATE_MIGRATION]: { concurrency: 5 },
+    [QueueName.MIGRATION]: { concurrency: 5 },
     [QueueName.THUMBNAIL_GENERATION]: { concurrency: 5 },
     [QueueName.VIDEO_CONVERSION]: { concurrency: 1 },
   },
@@ -41,6 +46,12 @@ const updatedConfig = Object.freeze<SystemConfig>({
     targetResolution: '720',
     targetVideoCodec: VideoCodec.H264,
     maxBitrate: '0',
+    bframes: -1,
+    refs: 0,
+    gopSize: 0,
+    npl: 0,
+    temporalAQ: false,
+    cqMode: CQMode.AUTO,
     twoPass: false,
     transcode: TranscodePolicy.REQUIRED,
     accel: TranscodeHWAccel.DISABLED,
@@ -49,9 +60,30 @@ const updatedConfig = Object.freeze<SystemConfig>({
   machineLearning: {
     enabled: true,
     url: 'http://immich-machine-learning:3003',
-    facialRecognitionEnabled: true,
-    tagImageEnabled: true,
-    clipEncodeEnabled: true,
+    classification: {
+      enabled: true,
+      modelName: 'microsoft/resnet-50',
+      minScore: 0.9,
+    },
+    clip: {
+      enabled: true,
+      modelName: 'ViT-B-32::openai',
+    },
+    facialRecognition: {
+      enabled: true,
+      modelName: 'buffalo_l',
+      minScore: 0.7,
+      maxDistance: 0.6,
+      minFaces: 1,
+    },
+  },
+  map: {
+    enabled: true,
+    tileUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  },
+  reverseGeocoding: {
+    enabled: true,
+    citiesFileOverride: CitiesFile.CITIES_500,
   },
   oauth: {
     autoLaunch: true,
@@ -75,6 +107,8 @@ const updatedConfig = Object.freeze<SystemConfig>({
   thumbnail: {
     webpSize: 250,
     jpegSize: 1440,
+    quality: 80,
+    colorspace: Colorspace.P3,
   },
 });
 
@@ -187,8 +221,10 @@ describe(SystemConfigService.name, () => {
           '{{y}}-{{MMM}}-{{dd}}/{{filename}}',
           '{{y}}-{{MMMM}}-{{dd}}/{{filename}}',
           '{{y}}/{{y}}-{{MM}}/{{filename}}',
+          '{{y}}/{{y}}-{{WW}}/{{filename}}',
         ],
         secondOptions: ['s', 'ss'],
+        weekOptions: ['W', 'WW'],
         yearOptions: ['y', 'yy'],
       });
     });

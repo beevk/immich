@@ -13,14 +13,16 @@ import {
   MapMarkerResponseDto,
   MemoryLaneDto,
   MemoryLaneResponseDto,
+  RandomAssetsDto,
   TimeBucketAssetDto,
   TimeBucketDto,
   TimeBucketResponseDto,
+  UpdateAssetDto as UpdateDto,
 } from '@app/domain';
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Put, Query, StreamableFile } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { Authenticated, AuthUser, SharedLinkRoute } from '../app.guard';
-import { asStreamableFile, UseValidation } from '../app.utils';
+import { AuthUser, Authenticated, SharedLinkRoute } from '../app.guard';
+import { UseValidation, asStreamableFile } from '../app.utils';
 import { UUIDParamDto } from './dto/uuid-param.dto';
 
 @ApiTags('Asset')
@@ -38,6 +40,11 @@ export class AssetController {
   @Get('memory-lane')
   getMemoryLane(@AuthUser() authUser: AuthUserDto, @Query() dto: MemoryLaneDto): Promise<MemoryLaneResponseDto[]> {
     return this.service.getMemoryLane(authUser, dto);
+  }
+
+  @Get('random')
+  getRandom(@AuthUser() authUser: AuthUserDto, @Query() dto: RandomAssetsDto): Promise<AssetResponseDto[]> {
+    return this.service.getRandom(authUser, dto.count ?? 1);
   }
 
   @SharedLinkRoute()
@@ -89,5 +96,14 @@ export class AssetController {
   @HttpCode(HttpStatus.NO_CONTENT)
   updateAssets(@AuthUser() authUser: AuthUserDto, @Body() dto: AssetBulkUpdateDto): Promise<void> {
     return this.service.updateAll(authUser, dto);
+  }
+
+  @Put(':id')
+  updateAsset(
+    @AuthUser() authUser: AuthUserDto,
+    @Param() { id }: UUIDParamDto,
+    @Body() dto: UpdateDto,
+  ): Promise<AssetResponseDto> {
+    return this.service.update(authUser, id, dto);
   }
 }

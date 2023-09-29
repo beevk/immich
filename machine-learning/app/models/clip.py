@@ -1,5 +1,6 @@
 import os
 import zipfile
+from io import BytesIO
 from typing import Any, Literal
 
 import onnxruntime as ort
@@ -8,9 +9,10 @@ from clip_server.model.clip import BICUBIC, _convert_image_to_rgb
 from clip_server.model.clip_onnx import _MODELS, _S3_BUCKET_V2, CLIPOnnxModel, download_model
 from clip_server.model.pretrained_models import _VISUAL_MODEL_IMAGE_SIZE
 from clip_server.model.tokenization import Tokenizer
-from PIL.Image import Image
+from PIL import Image
 from torchvision.transforms import CenterCrop, Compose, Normalize, Resize, ToTensor
 
+from ..config import log
 from ..schemas import ModelType
 from .base import InferenceModel
 
@@ -40,7 +42,7 @@ class CLIPEncoder(InferenceModel):
         jina_model_name = self._get_jina_model_name(model_name)
         super().__init__(jina_model_name, cache_dir, **model_kwargs)
 
-    def _download(self, **model_kwargs: Any) -> None:
+    def _download(self) -> None:
         models: tuple[tuple[str, str], tuple[str, str]] = _MODELS[self.model_name]
         text_onnx_path = self.cache_dir / "textual.onnx"
         vision_onnx_path = self.cache_dir / "visual.onnx"
@@ -51,8 +53,9 @@ class CLIPEncoder(InferenceModel):
         if not vision_onnx_path.is_file():
             self._download_model(*models[1])
 
-    def _load(self, **model_kwargs: Any) -> None:
+    def _load(self) -> None:
         if self.mode == "text" or self.mode is None:
+            log.debug(f"Loading clip text model '{self.model_name}'")
             self.text_model = ort.InferenceSession(
                 self.cache_dir / "textual.onnx",
                 sess_options=self.sess_options,
@@ -63,6 +66,7 @@ class CLIPEncoder(InferenceModel):
             self.tokenizer = Tokenizer(self.model_name)
 
         if self.mode == "vision" or self.mode is None:
+            log.debug(f"Loading clip vision model '{self.model_name}'")
             self.vision_model = ort.InferenceSession(
                 self.cache_dir / "visual.onnx",
                 sess_options=self.sess_options,
@@ -74,9 +78,12 @@ class CLIPEncoder(InferenceModel):
             image_size = _VISUAL_MODEL_IMAGE_SIZE[CLIPOnnxModel.get_model_name(self.model_name)]
             self.transform = _transform_pil_image(image_size)
 
-    def _predict(self, image_or_text: Image | str) -> list[float]:
+    def _predict(self, image_or_text: Image.Image | str) -> list[float]:
+        if isinstance(image_or_text, bytes):
+            image_or_text = Image.open(BytesIO(image_or_text))
+
         match image_or_text:
-            case Image():
+            case Image.Image():
                 if self.mode == "text":
                     raise TypeError("Cannot encode image as text-only model")
                 pixel_values = self.transform(image_or_text)
@@ -101,9 +108,11 @@ class CLIPEncoder(InferenceModel):
         if model_name in _MODELS:
             return model_name
         elif model_name in _ST_TO_JINA_MODEL_NAME:
-            print(
-                (f"Warning: Sentence-Transformer model names such as '{model_name}' are no longer supported."),
-                (f"Using '{_ST_TO_JINA_MODEL_NAME[model_name]}' instead as it is the best match for '{model_name}'."),
+            log.warn(
+                (
+                    f"Sentence-Transformer models like '{model_name}' are not supported."
+                    f"Using '{_ST_TO_JINA_MODEL_NAME[model_name]}' instead as it is the best match for '{model_name}'."
+                ),
             )
             return _ST_TO_JINA_MODEL_NAME[model_name]
         else:
@@ -123,6 +132,10 @@ class CLIPEncoder(InferenceModel):
                 zip_ref.extractall(self.cache_dir)
             os.remove(file)
         return True
+
+    @property
+    def cached(self) -> bool:
+        return (self.cache_dir / "textual.onnx").is_file() and (self.cache_dir / "visual.onnx").is_file()
 
 
 # same as `_transform_blob` without `_blob2image`

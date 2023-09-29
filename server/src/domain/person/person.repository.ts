@@ -1,4 +1,3 @@
-import { AssetFaceId } from '@app/domain';
 import { AssetEntity, AssetFaceEntity, PersonEntity } from '@app/infra/entities';
 export const IPersonRepository = 'IPersonRepository';
 
@@ -7,17 +6,24 @@ export interface PersonSearchOptions {
   withHidden: boolean;
 }
 
+export interface AssetFaceId {
+  assetId: string;
+  personId: string;
+}
+
 export interface UpdateFacesData {
   oldPersonId: string;
   newPersonId: string;
 }
 
 export interface IPersonRepository {
-  getAll(userId: string, options: PersonSearchOptions): Promise<PersonEntity[]>;
+  getAll(): Promise<PersonEntity[]>;
+  getAllWithoutThumbnail(): Promise<PersonEntity[]>;
+  getAllForUser(userId: string, options: PersonSearchOptions): Promise<PersonEntity[]>;
   getAllWithoutFaces(): Promise<PersonEntity[]>;
-  getById(userId: string, personId: string): Promise<PersonEntity | null>;
+  getById(personId: string): Promise<PersonEntity | null>;
 
-  getAssets(userId: string, personId: string): Promise<AssetEntity[]>;
+  getAssets(personId: string): Promise<AssetEntity[]>;
   prepareReassignFaces(data: UpdateFacesData): Promise<string[]>;
   reassignFaces(data: UpdateFacesData): Promise<number>;
 
@@ -26,5 +32,8 @@ export interface IPersonRepository {
   delete(entity: PersonEntity): Promise<PersonEntity | null>;
   deleteAll(): Promise<number>;
 
-  getFaceById(payload: AssetFaceId): Promise<AssetFaceEntity | null>;
+  getAllFaces(): Promise<AssetFaceEntity[]>;
+  getFacesByIds(ids: AssetFaceId[]): Promise<AssetFaceEntity[]>;
+  getRandomFace(personId: string): Promise<AssetFaceEntity | null>;
+  createFace(entity: Partial<AssetFaceEntity>): Promise<AssetFaceEntity>;
 }
